@@ -20,18 +20,28 @@ warn() { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 die()  { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 step() { echo -e "\n${CYAN}▶${NC} ${BOLD}$*${NC}"; }
 
-# ── Load saved vars silently ───────────────────────────────────────────────────
+# ── Install jungle command if not present ─────────────────────────────────────
+if [[ ! -f /usr/local/bin/jungle ]]; then
+    cat > /usr/local/bin/jungle <<'CMD'
+#!/usr/bin/env bash
+bash <(curl -Ls https://raw.githubusercontent.com/JungleVPN/scripts/main/install.sh)
+CMD
+    chmod +x /usr/local/bin/jungle
+    info "jungle command installed to /usr/local/bin/jungle"
+fi
+
+# ── Load saved vars silently ──────────────────────────────────────────────────
 [[ -f "$ENV_FILE" ]] && source "$ENV_FILE"
 
 # ── Ensure CDN vars are set, prompt only for missing ones ─────────────────────
 ensure_cdn_vars() {
     local changed=0
 
-    [[ -z "${ORIGIN_DOMAIN:-}" ]]     && { read -rp "  ORIGIN_DOMAIN:                         " ORIGIN_DOMAIN;     changed=1; }
-    [[ -z "${CDN_SYSTEM_DOMAIN:-}" ]] && { read -rp "  CDN_SYSTEM_DOMAIN:                     " CDN_SYSTEM_DOMAIN; changed=1; }
+    [[ -z "${ORIGIN_DOMAIN:-}" ]]     && { read -rp "  ORIGIN_DOMAIN:                              " ORIGIN_DOMAIN;     changed=1; }
+    [[ -z "${CDN_SYSTEM_DOMAIN:-}" ]] && { read -rp "  CDN_SYSTEM_DOMAIN:                          " CDN_SYSTEM_DOMAIN; changed=1; }
     [[ -z "${CDN_CUSTOM_DOMAIN:-}" ]] && { read -rp "  CDN_CUSTOM_DOMAIN (optional, Enter to skip): " CDN_CUSTOM_DOMAIN; changed=1; }
-    [[ -z "${LOCAL_PORT:-}" ]]        && { read -rp "  LOCAL_PORT        [4443]:               " LOCAL_PORT;        LOCAL_PORT="${LOCAL_PORT:-4443}";             changed=1; }
-    [[ -z "${XHTTP_PATH:-}" ]]        && { read -rp "  XHTTP_PATH        [/api/uploadFile/]:   " XHTTP_PATH;        XHTTP_PATH="${XHTTP_PATH:-/api/uploadFile/}"; changed=1; }
+    [[ -z "${LOCAL_PORT:-}" ]]        && { read -rp "  LOCAL_PORT        [4443]:                    " LOCAL_PORT;        LOCAL_PORT="${LOCAL_PORT:-4443}";             changed=1; }
+    [[ -z "${XHTTP_PATH:-}" ]]        && { read -rp "  XHTTP_PATH        [/api/uploadFile/]:        " XHTTP_PATH;        XHTTP_PATH="${XHTTP_PATH:-/api/uploadFile/}"; changed=1; }
 
     if [[ $changed -eq 1 ]]; then
         mkdir -p /etc/profile.d
@@ -72,16 +82,12 @@ echo ""
 echo -e "  ${CYAN}CDN / Origin setup${NC}"
 echo -e "   ${CYAN}1)${NC} Origin setup      — certbot + nginx + remnanode containers"
 echo -e "   ${CYAN}2)${NC} Verify CDN chain  — full chain check + Remnawave Host config"
-echo -e "   ${CYAN}3)${NC} Generate profile  — output Remnawave Config Profile JSON"
-echo -e "   ${CYAN}4)${NC} Cert renewal hook — certbot deploy hook for nginx reload"
-echo -e "   ${CYAN}5)${NC} Edit CDN vars     — update $ENV_FILE"
+echo -e "   ${CYAN}3)${NC} Cert renewal hook — certbot deploy hook for nginx reload"
+echo -e "   ${CYAN}4)${NC} Edit CDN vars     — update $ENV_FILE"
 echo ""
 echo -e "  ${CYAN}VPS hardening${NC}"
-echo -e "   ${CYAN}6)${NC} Node setup        — apt update, SSH hardening, UFW firewall"
-echo -e "   ${CYAN}7)${NC} Kernel tuning     — sysctl, BBR, Beszel, selfsteal, MOTD, RemnaNode"
-echo ""
-echo -e "  ${CYAN}Utility${NC}"
-echo -e "   ${CYAN}i)${NC} Install jungle    — add 'jungle' command to /usr/local/bin"
+echo -e "   ${CYAN}5)${NC} Node setup        — apt update, SSH hardening, UFW firewall"
+echo -e "   ${CYAN}6)${NC} Kernel tuning     — sysctl, BBR, Beszel, selfsteal, MOTD, RemnaNode"
 echo ""
 echo -e "   ${CYAN}0)${NC} Exit"
 echo -e "$SEP"
@@ -100,36 +106,19 @@ case "$CHOICE" in
         run_remote "02_cdn_verify.sh"
         ;;
     3)
-        [[ -z "${REALITY_PRIVATE_KEY:-}" ]] && read -rsp "  REALITY_PRIVATE_KEY: " REALITY_PRIVATE_KEY && echo
-        [[ -z "${REALITY_SHORT_ID:-}" ]]    && read -rp  "  REALITY_SHORT_ID:    " REALITY_SHORT_ID
-        export REALITY_PRIVATE_KEY REALITY_SHORT_ID
-        OUTPUT="xhttp_profile_$(date +%Y%m%d_%H%M%S).json"
-        bash <(curl -Ls "$REPO/03_gen_xhttp_profile.sh") > "$OUTPUT"
-        info "Profile written to $(pwd)/$OUTPUT"
-        info "Upload this file as a Config Profile in Remnawave panel"
-        ;;
-    4)
         ensure_cdn_vars
         run_remote "04_cert_renewal.sh"
         ;;
-    5)
+    4)
         "${EDITOR:-nano}" "$ENV_FILE"
         source "$ENV_FILE"
         info "Env reloaded"
         ;;
-    6)
+    5)
         run_remote "node_setup.sh"
         ;;
-    7)
+    6)
         run_remote "kernel_tuning.sh"
-        ;;
-    i)
-        cat > /usr/local/bin/jungle <<'CMD'
-#!/usr/bin/env bash
-bash <(curl -Ls https://raw.githubusercontent.com/JungleVPN/scripts/main/install.sh)
-CMD
-        chmod +x /usr/local/bin/jungle
-        info "Installed. Run ${BOLD}jungle${NC} from anywhere to open this menu."
         ;;
     0)
         exit 0
