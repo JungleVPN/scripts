@@ -3,11 +3,11 @@
 # install.sh — The Jungle: VPS node management menu
 #
 # Usage:
-#   bash <(curl -Ls https://raw.githubusercontent.com/RamazanIttiev/jungle-scripts/main/install.sh)
+#   bash <(curl -Ls https://raw.githubusercontent.com/JungleVPN/scripts/main/install.sh)
 # =============================================================================
 set -euo pipefail
 
-REPO="https://raw.githubusercontent.com/RamazanIttiev/jungle-scripts/main"
+REPO="https://raw.githubusercontent.com/JungleVPN/scripts/main"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'
 BLUE='\033[0;34m'; GRAY='\033[38;5;8m'; BOLD='\033[1m'; NC='\033[0m'
@@ -98,6 +98,9 @@ echo -e "  ${CYAN}VPS hardening${NC}"
 echo -e "   ${CYAN}6)${NC} Node setup        — apt update, SSH hardening, UFW firewall"
 echo -e "   ${CYAN}7)${NC} Kernel tuning     — sysctl, BBR, Beszel, selfsteal, MOTD, RemnaNode"
 echo ""
+echo -e "  ${CYAN}Utility${NC}"
+echo -e "   ${CYAN}i)${NC} Install jungle    — add 'jungle' command to /usr/local/bin"
+echo ""
 echo -e "   ${CYAN}0)${NC} Exit"
 echo -e "$SEP"
 echo ""
@@ -138,6 +141,14 @@ case "$CHOICE" in
         ;;
     7)
         run_remote "kernel_tuning.sh"
+        ;;
+    i)
+        cat > /usr/local/bin/jungle <<'CMD'
+#!/usr/bin/env bash
+bash <(curl -Ls https://raw.githubusercontent.com/JungleVPN/scripts/main/install.sh)
+CMD
+        chmod +x /usr/local/bin/jungle
+        info "Installed. Run ${BOLD}jungle${NC} from anywhere to open this menu."
         ;;
     0)
         exit 0
