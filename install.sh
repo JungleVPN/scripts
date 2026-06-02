@@ -79,15 +79,15 @@ echo -e "$SEP"
 echo -e "${BOLD}  What do you want to do?${NC}"
 echo -e "$SEP"
 echo ""
-echo -e "  ${CYAN}CDN / Origin setup${NC}"
-echo -e "   ${CYAN}1)${NC} Origin setup      — certbot + nginx + remnanode containers"
-echo -e "   ${CYAN}2)${NC} Verify CDN chain  — full chain check + Remnawave Host config"
-echo -e "   ${CYAN}3)${NC} Cert renewal hook — certbot deploy hook for nginx reload"
-echo -e "   ${CYAN}4)${NC} Edit CDN vars     — update $ENV_FILE"
+echo -e "  ${CYAN}Init${NC}"
+echo -e "   ${CYAN}1)${NC} Node setup        — apt update, SSH hardening, UFW firewall"
+echo -e "   ${CYAN}2)${NC} Kernel tuning     — sysctl, BBR, Beszel, selfsteal, MOTD, RemnaNode"
 echo ""
-echo -e "  ${CYAN}VPS hardening${NC}"
-echo -e "   ${CYAN}5)${NC} Node setup        — apt update, SSH hardening, UFW firewall"
-echo -e "   ${CYAN}6)${NC} Kernel tuning     — sysctl, BBR, Beszel, selfsteal, MOTD, RemnaNode"
+echo -e "  ${CYAN}CDN${NC}"
+echo -e "   ${CYAN}3)${NC} Origin setup      — certbot + nginx + remnanode containers"
+echo -e "   ${CYAN}4)${NC} Verify CDN chain  — full chain check + Remnawave Host config"
+echo -e "   ${CYAN}5)${NC} Cert renewal hook — certbot deploy hook for nginx reload"
+echo -e "   ${CYAN}6)${NC} Edit CDN vars     — update $ENV_FILE"
 echo ""
 echo -e "   ${CYAN}0)${NC} Exit"
 echo -e "$SEP"
@@ -96,29 +96,29 @@ read -rp "Choice: " CHOICE
 
 case "$CHOICE" in
     1)
+        run_remote "node_setup.sh"
+        ;;
+    2)
+        run_remote "kernel_tuning.sh"
+        ;;
+    3)
         ensure_cdn_vars
         [[ -z "${SECRET_KEY:-}" ]] && read -rsp "  SECRET_KEY (from Remnawave panel): " SECRET_KEY && echo
         export SECRET_KEY
         run_remote "01_origin_setup.sh"
         ;;
-    2)
+    4)
         ensure_cdn_vars
         run_remote "02_cdn_verify.sh"
         ;;
-    3)
+    5)
         ensure_cdn_vars
         run_remote "04_cert_renewal.sh"
         ;;
-    4)
+    6)
         "${EDITOR:-nano}" "$ENV_FILE"
         source "$ENV_FILE"
         info "Env reloaded"
-        ;;
-    5)
-        run_remote "node_setup.sh"
-        ;;
-    6)
-        run_remote "kernel_tuning.sh"
         ;;
     0)
         exit 0
