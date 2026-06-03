@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# kernel_tuning.sh — Kernel/network optimizations + tooling install
-#
-# Applies: sysctl hardening, BBR, Beszel dir, selfsteal, MOTD, vps-audit,
-#          RemnaNode.
+# kernel_tuning.sh — Kernel/network optimizations: sysctl + BBR + vps-audit
 #
 # Usage (standalone):
 #   bash kernel_tuning.sh
-#   bash <(curl -Ls https://raw.githubusercontent.com/RamazanIttiev/jungle-scripts/main/kernel_tuning.sh)
+#   bash <(curl -Ls https://raw.githubusercontent.com/JungleVPN/scripts/main/kernel_tuning.sh)
 # =============================================================================
 set -euo pipefail
 
@@ -27,7 +24,7 @@ echo -e "${CYAN}${BOLD}"
 cat <<'BANNER'
   ╔════════════════════════════════════════════════════════╗
   ║           The Jungle — Kernel & Network Tuning         ║
-  ║     sysctl · BBR · Beszel · selfsteal · RemnaNode      ║
+  ║                   sysctl · BBR · audit                 ║
   ╚════════════════════════════════════════════════════════╝
 BANNER
 echo -e "${NC}"
@@ -39,15 +36,9 @@ echo -e "$SEP"
 echo -e "   ${CYAN}1.${NC} Overwrite ${CYAN}/etc/sysctl.conf${NC} with hardened + performance settings"
 echo -e "       IPv6 disabled, BBR congestion control, TCP buffer tuning,"
 echo -e "       anti-spoofing, ICMP protection, kernel security flags"
-echo -e "   ${CYAN}2.${NC} Run BBR + fq enable script (endomarfan)"
-echo -e "   ${CYAN}3.${NC} Create ${CYAN}/opt/beszel/compose.yml${NC}"
-echo -e "   ${CYAN}4.${NC} Install ${CYAN}selfsteal${NC} — Caddy-based Reality traffic masking"
-echo -e "   ${CYAN}5.${NC} Install ${CYAN}MOTD${NC} banner (distillium)"
-echo -e "   ${CYAN}6.${NC} Run ${CYAN}vps-audit${NC} (vernu)"
-echo -e "   ${CYAN}7.${NC} Install ${CYAN}RemnaNode${NC} via DigneZzZ script"
+echo -e "   ${CYAN}2.${NC} Run BBR + fq enable script"
+echo -e "   ${CYAN}3.${NC} Run vps-audit"
 echo -e "$SEP"
-echo ""
-warn "Steps 4 and 7 have their own interactive prompts."
 echo ""
 read -rp "Start kernel & network tuning? [y/N] " _ans
 [[ "${_ans,,}" == "y" ]] || { info "Aborted."; exit 0; }
@@ -145,23 +136,10 @@ sysctl --system
 step "Enabling BBR + fq"
 bash <(curl -sSL https://raw.githubusercontent.com/endomarfan/scripts/main/enable-bbr-fq.sh)
 
-step "Creating Beszel directory"
-mkdir -p /opt/beszel
-touch /opt/beszel/compose.yml
-
-step "Installing selfsteal (Caddy Reality masking)"
-bash <(curl -Ls https://github.com/DigneZzZ/remnawave-scripts/raw/main/selfsteal.sh) @ install
-
-step "Installing MOTD banner"
-curl -fsSL https://raw.githubusercontent.com/distillium/motd/main/install-motd.sh | bash
-
 step "Running vps-audit"
 curl -O https://raw.githubusercontent.com/vernu/vps-audit/main/vps-audit.sh
 chmod +x vps-audit.sh
 bash vps-audit.sh
-
-step "Installing RemnaNode"
-curl -Ls https://github.com/DigneZzZ/remnawave-scripts/raw/main/remnanode.sh | bash -s -- @ install
 
 echo ""
 echo -e "$SEP"

@@ -81,13 +81,16 @@ echo -e "$SEP"
 echo ""
 echo -e "  ${CYAN}Init${NC}"
 echo -e "   ${CYAN}1)${NC} Node setup        — apt update, SSH hardening, UFW firewall"
-echo -e "   ${CYAN}2)${NC} Kernel tuning     — sysctl, BBR, Beszel, selfsteal, MOTD, RemnaNode"
+echo -e "   ${CYAN}2)${NC} Kernel tuning     — sysctl optimizations + BBR"
+echo -e "   ${CYAN}3)${NC} Beszel + MOTD     — monitoring agent + login banner"
+echo -e "   ${CYAN}4)${NC} selfsteal         — Caddy Reality traffic masking"
+echo -e "   ${CYAN}5)${NC} RemnaNode         — Remnawave node install"
 echo ""
 echo -e "  ${CYAN}CDN${NC}"
-echo -e "   ${CYAN}3)${NC} Origin setup      — certbot + nginx + remnanode containers"
-echo -e "   ${CYAN}4)${NC} Verify CDN chain  — full chain check + Remnawave Host config"
-echo -e "   ${CYAN}5)${NC} Cert renewal hook — certbot deploy hook for nginx reload"
-echo -e "   ${CYAN}6)${NC} Edit CDN vars     — update $ENV_FILE"
+echo -e "   ${CYAN}6)${NC} Origin setup      — certbot + nginx + remnanode containers"
+echo -e "   ${CYAN}7)${NC} Verify CDN chain  — full chain check + Remnawave Host config"
+echo -e "   ${CYAN}8)${NC} Cert renewal hook — certbot deploy hook for nginx reload"
+echo -e "   ${CYAN}9)${NC} Edit CDN vars     — update $ENV_FILE"
 echo ""
 echo -e "   ${CYAN}0)${NC} Exit"
 echo -e "$SEP"
@@ -102,20 +105,29 @@ case "$CHOICE" in
         run_remote "kernel_tuning.sh"
         ;;
     3)
+        run_remote "beszel.sh"
+        ;;
+    4)
+        run_remote "selfsteal.sh"
+        ;;
+    5)
+        run_remote "remnanode.sh"
+        ;;
+    6)
         ensure_cdn_vars
         [[ -z "${SECRET_KEY:-}" ]] && read -rsp "  SECRET_KEY (from Remnawave panel): " SECRET_KEY && echo
         export SECRET_KEY
         run_remote "01_origin_setup.sh"
         ;;
-    4)
+    7)
         ensure_cdn_vars
         run_remote "02_cdn_verify.sh"
         ;;
-    5)
+    8)
         ensure_cdn_vars
         run_remote "04_cert_renewal.sh"
         ;;
-    6)
+    9)
         "${EDITOR:-nano}" "$ENV_FILE"
         source "$ENV_FILE"
         info "Env reloaded"
