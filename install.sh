@@ -22,14 +22,11 @@ step() { echo -e "\n${CYAN}▶${NC} ${BOLD}$*${NC}"; }
 pause() { echo ""; read -rp "  Press Enter to continue..." _; }
 
 # ── Install jungle command if not present ─────────────────────────────────────
-if [[ ! -f /usr/local/bin/jungle ]]; then
-    cat > /usr/local/bin/jungle <<'CMD'
+cat > /usr/local/bin/jungle <<'CMD'
 #!/usr/bin/env bash
 bash <(curl -Ls -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/JungleVPN/scripts/main/install.sh)
 CMD
-    chmod +x /usr/local/bin/jungle
-    info "jungle command installed to /usr/local/bin/jungle"
-fi
+chmod +x /usr/local/bin/jungle
 
 # ── Load saved vars silently ──────────────────────────────────────────────────
 [[ -f "$ENV_FILE" ]] && source "$ENV_FILE"
