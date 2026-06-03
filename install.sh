@@ -25,7 +25,7 @@ pause() { echo ""; read -rp "  Press Enter to continue..." _; }
 if [[ ! -f /usr/local/bin/jungle ]]; then
     cat > /usr/local/bin/jungle <<'CMD'
 #!/usr/bin/env bash
-bash <(curl -Ls https://raw.githubusercontent.com/JungleVPN/scripts/main/install.sh)
+bash <(curl -Ls -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/JungleVPN/scripts/main/install.sh)
 CMD
     chmod +x /usr/local/bin/jungle
     info "jungle command installed to /usr/local/bin/jungle"
@@ -61,7 +61,7 @@ EOF
 run_remote() {
     local script="$1"
     info "Fetching $script ..."
-    bash <(curl -Ls "$REPO/$script")
+    bash <(curl -Ls -H 'Cache-Control: no-cache' "$REPO/$script")
 }
 
 # ── Scripts submenus ──────────────────────────────────────────────────────────
