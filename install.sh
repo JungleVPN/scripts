@@ -231,13 +231,13 @@ BANNER
         5)  run_remote "remnanode.sh";      pause ;;
         6)
             ensure_cdn_vars
-            [[ -z "${SECRET_KEY:-}" ]] && read -rsp "  SECRET_KEY (from Remnawave panel): " SECRET_KEY && echo
+            [[ -z "${SECRET_KEY:-}" ]] && read -rp "  SECRET_KEY (from Remnawave panel): " SECRET_KEY
             export SECRET_KEY
-            run_remote "01_origin_setup.sh"
+            run_remote "origin_setup.sh"
             pause
             ;;
-        7)  ensure_cdn_vars; run_remote "02_cdn_verify.sh";    pause ;;
-        8)  ensure_cdn_vars; run_remote "04_cert_renewal.sh";  pause ;;
+        7)  ensure_cdn_vars; run_remote "cdn_verify.sh";    pause ;;
+        8)  ensure_cdn_vars; run_remote "cert_renewal.sh";  pause ;;
         9)
             "${EDITOR:-nano}" "$ENV_FILE"
             source "$ENV_FILE"
