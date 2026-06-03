@@ -89,6 +89,7 @@ ufw --force reset
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow "$SSH_PORT/tcp"                                         # SSH
+ufw allow 80/tcp                                                  # HTTP
 ufw allow 443/tcp                                                 # VPN HTTPS
 ufw allow 443                                                     # VPN UDP
 ufw allow "$BESZEL_PORT/tcp"                                      # Beszel monitoring
