@@ -89,13 +89,19 @@ BANNER
         read -rp "Choice: " _c
         case "$_c" in
             1)
-                step "Installing Speedtest CLI (Ookla)"
-                if ! command -v speedtest &>/dev/null; then
-                    curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash
-                    apt-get update -qq
-                    apt-get install -y speedtest
-                fi
-                speedtest
+                step "Running Speedtest CLI (Ookla)"
+                ARCH=$(uname -m)
+                case "$ARCH" in
+                    aarch64) ARCH_SUFFIX="aarch64" ;;
+                    armv7l)  ARCH_SUFFIX="armhf"   ;;
+                    *)       ARCH_SUFFIX="x86_64"  ;;
+                esac
+                SPEEDTEST_URL="https://install.speedtest.net/app/cli/ookla-speedtest-1.2.0-linux-${ARCH_SUFFIX}.tgz"
+                curl -Ls "$SPEEDTEST_URL" -o /tmp/speedtest.tgz
+                tar -xzf /tmp/speedtest.tgz -C /tmp speedtest
+                chmod +x /tmp/speedtest
+                /tmp/speedtest
+                rm -f /tmp/speedtest /tmp/speedtest.tgz
                 pause
                 ;;
             2) curl -sL yabs.sh | bash -s -- -4;  pause ;;
