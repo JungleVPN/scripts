@@ -25,19 +25,26 @@ BANNER
 echo -e "${NC}"
 
 # ── Check function ────────────────────────────────────────────────────────────
-# Any HTTP response = reachable (connection works).
-# 000 = truly unreachable (timeout, DNS fail, TLS error, etc.)
+# Any HTTP response = reachable. 000 = unreachable.
+# Retries with --insecure if first attempt fails (handles TLS issues).
+CURL_OPTS=(-s -o /dev/null -w "%{http_code} %{time_total}"
+           --connect-timeout 10 --max-time 15
+           -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+           -L)
+
 check() {
     local name="$1"
     local url="$2"
+    local note=""
 
     local result
-    result=$(curl -s -o /dev/null \
-        -w "%{http_code} %{time_total}" \
-        --connect-timeout 10 \
-        --max-time 15 \
-        -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36" \
-        -L "$url" 2>/dev/null) || result="000 0"
+    result=$(curl "${CURL_OPTS[@]}" "$url" 2>/dev/null) || result="000 0"
+
+    # Retry with --insecure if connection failed (TLS/cert issue)
+    if [[ "${result%% *}" == "000" ]]; then
+        result=$(curl "${CURL_OPTS[@]}" --insecure "$url" 2>/dev/null) || result="000 0"
+        [[ "${result%% *}" != "000" ]] && note=" ${GRAY}(insecure)${NC}"
+    fi
 
     local code="${result%% *}"
     local time="${result##* }"
@@ -47,7 +54,7 @@ check() {
     if [[ "$code" == "000" ]]; then
         printf "  ${RED}✗${NC} %-30s ${RED}unreachable${NC}\n" "$name"
     else
-        printf "  ${GREEN}✓${NC} %-30s ${GRAY}HTTP %s${NC}  ${GREEN}%s ms${NC}\n" "$name" "$code" "$ms"
+        printf "  ${GREEN}✓${NC} %-30s ${GRAY}HTTP %s${NC}  ${GREEN}%s ms${NC}${note}\n" "$name" "$code" "$ms"
     fi
 }
 
