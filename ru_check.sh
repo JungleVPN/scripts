@@ -25,6 +25,8 @@ BANNER
 echo -e "${NC}"
 
 # ── Check function ────────────────────────────────────────────────────────────
+# Any HTTP response = reachable (connection works).
+# 000 = truly unreachable (timeout, DNS fail, TLS error, etc.)
 check() {
     local name="$1"
     local url="$2"
@@ -34,6 +36,7 @@ check() {
         -w "%{http_code} %{time_total}" \
         --connect-timeout 10 \
         --max-time 15 \
+        -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36" \
         -L "$url" 2>/dev/null) || result="000 0"
 
     local code="${result%% *}"
@@ -41,12 +44,10 @@ check() {
     local ms
     ms=$(awk "BEGIN {printf \"%.0f\", $time * 1000}")
 
-    if [[ "$code" =~ ^(200|301|302|303|403|404) ]]; then
-        printf "  ${GREEN}✓${NC} %-30s ${GRAY}%s${NC} ${GREEN}%s ms${NC}\n" "$name" "$code" "$ms"
-    elif [[ "$code" == "000" ]]; then
+    if [[ "$code" == "000" ]]; then
         printf "  ${RED}✗${NC} %-30s ${RED}unreachable${NC}\n" "$name"
     else
-        printf "  ${YELLOW}?${NC} %-30s ${GRAY}%s${NC} ${YELLOW}%s ms${NC}\n" "$name" "$code" "$ms"
+        printf "  ${GREEN}✓${NC} %-30s ${GRAY}HTTP %s${NC}  ${GREEN}%s ms${NC}\n" "$name" "$code" "$ms"
     fi
 }
 
@@ -96,6 +97,6 @@ check "DNS Shop"           "https://dns-shop.ru"
 
 echo ""
 echo -e "$SEP"
-printf "  ${GRAY}%-30s  %-10s  %s${NC}\n" "Legend:" "✓  reachable" "✗  unreachable  ?  unexpected code"
+printf "  ${GRAY}✓  reachable (any HTTP response)    ✗  unreachable (timeout / DNS / TLS fail)${NC}\n"
 echo -e "$SEP"
 echo ""
