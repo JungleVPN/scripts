@@ -40,6 +40,7 @@ ensure_cdn_vars() {
     [[ -z "${CDN_CUSTOM_DOMAIN:-}" ]] && { read -rp "  CDN_CUSTOM_DOMAIN (optional, Enter to skip):  " CDN_CUSTOM_DOMAIN; changed=1; }
     [[ -z "${LOCAL_PORT:-}" ]]        && { read -rp "  LOCAL_PORT        [4443]:                     " LOCAL_PORT;        LOCAL_PORT="${LOCAL_PORT:-4443}";             changed=1; }
     [[ -z "${XHTTP_PATH:-}" ]]        && { read -rp "  XHTTP_PATH        [/api/uploadFile/]:         " XHTTP_PATH;        XHTTP_PATH="${XHTTP_PATH:-/api/uploadFile/}"; changed=1; }
+    [[ -z "${SECRET_KEY:-}" ]]        && { read -rp "  SECRET_KEY        (node secret key):          " SECRET_KEY;        changed=1; }
 
     if [[ $changed -eq 1 ]]; then
         mkdir -p /etc/profile.d
@@ -49,6 +50,7 @@ export CDN_SYSTEM_DOMAIN="${CDN_SYSTEM_DOMAIN}"
 export CDN_CUSTOM_DOMAIN="${CDN_CUSTOM_DOMAIN}"
 export LOCAL_PORT="${LOCAL_PORT}"
 export XHTTP_PATH="${XHTTP_PATH}"
+export SECRET_KEY="${SECRET_KEY}"
 EOF
         info "Saved to $ENV_FILE"
     fi
@@ -228,7 +230,6 @@ BANNER
         5)  run_remote "remnanode.sh";      pause ;;
         6)
             ensure_cdn_vars
-            [[ -z "${SECRET_KEY:-}" ]] && read -rp "  SECRET_KEY (from Remnawave panel): " SECRET_KEY
             export SECRET_KEY
             run_remote "origin_setup.sh"
             pause
