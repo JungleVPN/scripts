@@ -217,6 +217,7 @@ BANNER
     echo -e "  ${CYAN}10)${NC} Speed & Benchmarks  — Speedtest, YABS, bench.sh, tlab, gig.ovh"
     echo -e "  ${CYAN}11)${NC} CPU & Hardware      — sysbench, TCP congestion, CPU frequency"
     echo -e "  ${CYAN}12)${NC} IP & Connectivity   — IP region, block checks, CensorCheck DPI"
+    echo -e "  ${CYAN}13)${NC} RU Services check   — connectivity to gov, banks, social, e-commerce"
     echo ""
     echo -e "   ${CYAN}0)${NC} Exit"
     echo -e "$SEP"
@@ -246,6 +247,7 @@ BANNER
         10) menu_speed_benchmarks ;;
         11) menu_cpu_hardware ;;
         12) menu_ip_connectivity ;;
+        13) run_remote "ru_check.sh"; pause ;;
         0)  exit 0 ;;
         *)  warn "Invalid choice: $CHOICE"; pause ;;
     esac
