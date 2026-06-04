@@ -92,7 +92,8 @@ BANNER
                 step "Installing Speedtest CLI (Ookla)"
                 if ! command -v speedtest &>/dev/null; then
                     curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash
-                    apt install -y speedtest
+                    apt-get update -qq
+                    apt-get install -y speedtest
                 fi
                 speedtest
                 pause
