@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
 # =============================================================================
-# na_protect.sh — Node Accelerator: nftables firewall + CrowdSec IPS
+# na_protect.sh — nftables firewall + CrowdSec IPS
 #
-# Runs protect.sh from https://github.com/jestivald/node-accelerator
-# Sets up: nftables na_filter table (coexists with UFW/Docker/CrowdSec),
-#          anti-scan, flag-drop, SYN/UDP flood limits, per-IP connlimit,
-#          SSH connect-flood ban, portscan autoban.
-#          CrowdSec + firewall-bouncer for community blocklists.
+# Wraps protect.sh from https://github.com/jestivald/node-accelerator
+# Port config is loaded from /etc/profile.d/jungle-node.sh (saved by
+# node_setup.sh) — prompts only for values that are missing.
 #
-# ⚠ Does NOT flush existing ruleset — manages only its own inet na_filter table.
-#   Safe to run alongside UFW and Docker NAT rules.
+# Replaces UFW: disables and removes ufw after protect.sh completes.
 #
-# ENV overrides (all optional):
-#   SSH_PORT, TCP_PORTS, UDP_PORTS, NODE_PORT, WHITELIST
-#   ENABLE_CROWDSEC=0  to skip CrowdSec install
+# Ports opened:
+#   TCP — SSH, 80, 443, XHTTP, gRPC, Beszel
+#   UDP — 443
+#   NODE_PORT — restricted to PANEL_IP (whitelist)
 #
 # Usage (standalone):
 #   bash na_protect.sh
@@ -29,7 +27,9 @@ info() { echo -e "${GREEN}[INFO]${NC}  $*"; }
 warn() { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 
 NA_REPO="https://raw.githubusercontent.com/jestivald/node-accelerator/main"
+JUNGLE_ENV="/etc/profile.d/jungle-node.sh"
 
+# ── Header ────────────────────────────────────────────────────────────────────
 clear
 echo -e "${CYAN}${BOLD}"
 cat <<'BANNER'
@@ -39,15 +39,49 @@ cat <<'BANNER'
   ╚════════════════════════════════════════════════════════╝
 BANNER
 echo -e "${NC}"
+
+# ── Load saved vars ───────────────────────────────────────────────────────────
+[[ -f "$JUNGLE_ENV" ]] && source "$JUNGLE_ENV"
+
+# ── Collect any missing values ────────────────────────────────────────────────
 echo -e "$SEP"
-warn "A safety timer will auto-remove the firewall table after 300s."
+echo -e "${BOLD}  Port configuration (loaded from node setup where available)${NC}"
+echo -e "$SEP"
+echo ""
+
+read -rp "  SSH port         [${JUNGLE_SSH_PORT:-1702}]:           " _v; SSH_PORT="${_v:-${JUNGLE_SSH_PORT:-1702}}"
+read -rp "  Panel IP         [${JUNGLE_PANEL_IP:-}]:  "              _v; PANEL_IP="${_v:-${JUNGLE_PANEL_IP:-}}"
+read -rp "  Beszel port      [${JUNGLE_BESZEL_PORT:-45876}]:          " _v; BESZEL_PORT="${_v:-${JUNGLE_BESZEL_PORT:-45876}}"
+read -rp "  Node port        [${JUNGLE_NODE_PORT:-2222}]:           "  _v; NODE_PORT="${_v:-${JUNGLE_NODE_PORT:-2222}}"
+read -rp "  XHTTP port       [${JUNGLE_XHTTP_PORT:-8443}]:           " _v; XHTTP_PORT="${_v:-${JUNGLE_XHTTP_PORT:-8443}}"
+read -rp "  gRPC port        [${JUNGLE_GRPC_PORT:-9443}]:           "  _v; GRPC_PORT="${_v:-${JUNGLE_GRPC_PORT:-9443}}"
+
+# Build protect.sh ENV vars from collected values
+# TCP_PORTS: service ports (SSH handled separately by protect.sh)
+TCP_PORTS="80,443,${XHTTP_PORT},${GRPC_PORT},${BESZEL_PORT}"
+UDP_PORTS="443"
+# Panel IP goes into whitelist — never autobanned, always has access to NODE_PORT
+WHITELIST="${PANEL_IP}"
+
+echo ""
+echo -e "$SEP"
+echo -e "${BOLD}  nftables rules summary${NC}"
+echo -e "$SEP"
+echo -e "  SSH             = ${CYAN}$SSH_PORT/tcp${NC}"
+echo -e "  TCP_PORTS       = ${CYAN}$TCP_PORTS${NC}"
+echo -e "  UDP_PORTS       = ${CYAN}$UDP_PORTS${NC}"
+echo -e "  NODE_PORT       = ${CYAN}$NODE_PORT/tcp${NC}  (panel-only via whitelist)"
+echo -e "  WHITELIST       = ${CYAN}$PANEL_IP${NC}"
+echo -e "$SEP"
+echo ""
+warn "A 300s safety timer will auto-remove the firewall if SSH breaks."
 warn "You will be asked to confirm SSH still works before it is disarmed."
-warn "Coexists with UFW and Docker — does NOT flush existing rules."
-echo -e "$SEP"
+warn "Coexists with Docker — does NOT flush existing nftables rules."
 echo ""
 read -rp "Proceed? [y/N] " _ans
 [[ "${_ans,,}" == "y" ]] || { info "Aborted."; exit 0; }
 
+# ── Fetch and run protect.sh with pre-filled ENV ──────────────────────────────
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
@@ -59,4 +93,16 @@ curl -Ls -H 'Cache-Control: no-cache' "$NA_REPO/scripts/protect.sh" \
     -o "$TMPDIR/scripts/protect.sh"
 chmod +x "$TMPDIR/scripts/protect.sh"
 
+# Export vars — protect.sh will show these as defaults in its prompts
+# so the user just presses Enter to confirm each one.
+export SSH_PORT TCP_PORTS UDP_PORTS UDP_PORTS NODE_PORT WHITELIST
+
 bash "$TMPDIR/scripts/protect.sh"
+
+# ── Disable and remove UFW ────────────────────────────────────────────────────
+if command -v ufw >/dev/null 2>&1; then
+    step "Removing UFW (replaced by nftables na_filter)"
+    ufw disable 2>/dev/null || true
+    apt-get purge -y ufw >/dev/null 2>&1 || true
+    info "UFW removed — firewall is now managed by nftables"
+fi
