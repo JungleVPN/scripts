@@ -208,22 +208,27 @@ BANNER
     echo ""
     echo -e "  ${CYAN}Init${NC}"
     echo -e "   ${CYAN}1)${NC} Node setup        — apt update, SSH hardening, UFW firewall"
-    echo -e "   ${CYAN}2)${NC} Kernel tuning     — sysctl optimizations + BBR"
+    echo -e "   ${CYAN}2)${NC} Kernel tuning     — sysctl, limits, RPS, THP, swap (no reboot)"
     echo -e "   ${CYAN}3)${NC} Beszel + MOTD     — monitoring agent + login banner"
     echo -e "   ${CYAN}4)${NC} selfsteal         — Caddy Reality traffic masking"
     echo -e "   ${CYAN}5)${NC} RemnaNode         — Remnawave node install"
     echo ""
+    echo -e "  ${CYAN}Node Accelerator${NC}"
+    echo -e "   ${CYAN}6)${NC} Diagnose          — read-only: kernel, sysctl, NIC, firewall check"
+    echo -e "   ${CYAN}7)${NC} Optimize          — XanMod kernel (BBRv3), RPS, limits (reboot)"
+    echo -e "   ${CYAN}8)${NC} Protect           — nftables firewall + CrowdSec IPS"
+    echo ""
     echo -e "  ${CYAN}CDN${NC}"
-    echo -e "   ${CYAN}6)${NC} Origin setup      — certbot + nginx + remnanode containers"
-    echo -e "   ${CYAN}7)${NC} Verify CDN chain  — full chain check + Remnawave Host config"
-    echo -e "   ${CYAN}8)${NC} Cert renewal hook — certbot deploy hook for nginx reload"
-    echo -e "   ${CYAN}9)${NC} Edit CDN vars     — update $ENV_FILE"
+    echo -e "   ${CYAN}9)${NC} Origin setup      — certbot + nginx + remnanode containers"
+    echo -e "  ${CYAN}10)${NC} Verify CDN chain  — full chain check + Remnawave Host config"
+    echo -e "  ${CYAN}11)${NC} Cert renewal hook — certbot deploy hook for nginx reload"
+    echo -e "  ${CYAN}12)${NC} Edit CDN vars     — update $ENV_FILE"
     echo ""
     echo -e "  ${CYAN}Scripts${NC}"
-    echo -e "  ${CYAN}10)${NC} Speed & Benchmarks  — Speedtest, YABS, bench.sh, tlab, gig.ovh"
-    echo -e "  ${CYAN}11)${NC} CPU & Hardware      — sysbench, TCP congestion, CPU frequency"
-    echo -e "  ${CYAN}12)${NC} IP & Connectivity   — IP region, block checks, CensorCheck DPI"
-    echo -e "  ${CYAN}13)${NC} RU Services check   — connectivity to gov, banks, social, e-commerce"
+    echo -e "  ${CYAN}13)${NC} Speed & Benchmarks  — Speedtest, YABS, bench.sh, tlab, gig.ovh"
+    echo -e "  ${CYAN}14)${NC} CPU & Hardware      — sysbench, TCP congestion, CPU frequency"
+    echo -e "  ${CYAN}15)${NC} IP & Connectivity   — IP region, block checks, CensorCheck DPI"
+    echo -e "  ${CYAN}16)${NC} RU Services check   — connectivity to gov, banks, social, e-commerce"
     echo ""
     echo -e "   ${CYAN}0)${NC} Exit"
     echo -e "$SEP"
@@ -231,29 +236,32 @@ BANNER
     read -rp "Choice: " CHOICE
 
     case "$CHOICE" in
-        1)  run_remote "node_setup.sh";     pause ;;
-        2)  run_remote "kernel_tuning.sh";  pause ;;
-        3)  run_remote "beszel.sh";         pause ;;
-        4)  run_remote "selfsteal.sh";      pause ;;
-        5)  run_remote "remnanode.sh";      pause ;;
-        6)
+        1)  run_remote "node_setup.sh";    pause ;;
+        2)  run_remote "kernel_tuning.sh"; pause ;;
+        3)  run_remote "beszel.sh";        pause ;;
+        4)  run_remote "selfsteal.sh";     pause ;;
+        5)  run_remote "remnanode.sh";     pause ;;
+        6)  run_remote "na_diagnose.sh";   pause ;;
+        7)  run_remote "na_optimize.sh";   pause ;;
+        8)  run_remote "na_protect.sh";    pause ;;
+        9)
             ensure_cdn_vars
             export SECRET_KEY
             run_remote "origin_setup.sh"
             pause
             ;;
-        7)  ensure_cdn_vars; run_remote "cdn_verify.sh";    pause ;;
-        8)  ensure_cdn_vars; run_remote "cert_renewal.sh";  pause ;;
-        9)
+        10) ensure_cdn_vars; run_remote "cdn_verify.sh";    pause ;;
+        11) ensure_cdn_vars; run_remote "cert_renewal.sh";  pause ;;
+        12)
             "${EDITOR:-nano}" "$ENV_FILE"
             source "$ENV_FILE"
             info "Env reloaded"
             pause
             ;;
-        10) menu_speed_benchmarks ;;
-        11) menu_cpu_hardware ;;
-        12) menu_ip_connectivity ;;
-        13) run_remote "ru_check.sh"; pause ;;
+        13) menu_speed_benchmarks ;;
+        14) menu_cpu_hardware ;;
+        15) menu_ip_connectivity ;;
+        16) run_remote "ru_check.sh"; pause ;;
         0)  exit 0 ;;
         *)  warn "Invalid choice: $CHOICE"; pause ;;
     esac
