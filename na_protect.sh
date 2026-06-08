@@ -27,6 +27,7 @@ info() { echo -e "${GREEN}[INFO]${NC}  $*"; }
 warn() { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 
 NA_REPO="https://raw.githubusercontent.com/jestivald/node-accelerator/main"
+JUNGLE_SCRIPTS_REPO="https://raw.githubusercontent.com/JungleVPN/scripts/main"
 JUNGLE_ENV="/etc/profile.d/jungle-node.sh"
 
 # ── Header ────────────────────────────────────────────────────────────────────
@@ -43,27 +44,20 @@ echo -e "${NC}"
 # ── Load saved vars ───────────────────────────────────────────────────────────
 [[ -f "$JUNGLE_ENV" ]] && source "$JUNGLE_ENV"
 
-# ── Collect any missing values ────────────────────────────────────────────────
-echo -e "$SEP"
-echo -e "${BOLD}  Port configuration (loaded from node setup where available)${NC}"
-echo -e "$SEP"
-echo ""
+# ── Collect all inputs upfront ────────────────────────────────────────────────
+_local_lib="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/lib/node_config.sh"
+if [[ -f "$_local_lib" ]]; then
+    source "$_local_lib"
+else
+    source <(curl -Ls "$JUNGLE_SCRIPTS_REPO/lib/node_config.sh")
+fi
+collect_node_config
 
-read -rp "  SSH port         [${JUNGLE_SSH_PORT:-1702}]:           " _v; SSH_PORT="${_v:-${JUNGLE_SSH_PORT:-1702}}"
-read -rp "  Panel IP         [${JUNGLE_PANEL_IP:-}]:  "              _v; PANEL_IP="${_v:-${JUNGLE_PANEL_IP:-}}"
-read -rp "  Beszel port      [${JUNGLE_BESZEL_PORT:-45876}]:          " _v; BESZEL_PORT="${_v:-${JUNGLE_BESZEL_PORT:-45876}}"
-read -rp "  Node port        [${JUNGLE_NODE_PORT:-2222}]:           "  _v; NODE_PORT="${_v:-${JUNGLE_NODE_PORT:-2222}}"
-read -rp "  XHTTP port       [${JUNGLE_XHTTP_PORT:-8443}]:           " _v; XHTTP_PORT="${_v:-${JUNGLE_XHTTP_PORT:-8443}}"
-read -rp "  gRPC port        [${JUNGLE_GRPC_PORT:-9443}]:           "  _v; GRPC_PORT="${_v:-${JUNGLE_GRPC_PORT:-9443}}"
-
-# Build protect.sh ENV vars from collected values
-# TCP_PORTS: service ports (SSH handled separately by protect.sh)
+# Build protect.sh ENV vars
 TCP_PORTS="80,443,${XHTTP_PORT},${GRPC_PORT},${BESZEL_PORT}"
 UDP_PORTS="443"
-# Panel IP goes into whitelist — never autobanned, always has access to NODE_PORT
 WHITELIST="${PANEL_IP}"
 
-echo ""
 echo -e "$SEP"
 echo -e "${BOLD}  nftables rules summary${NC}"
 echo -e "$SEP"
@@ -80,6 +74,11 @@ warn "Coexists with Docker — does NOT flush existing nftables rules."
 echo ""
 read -rp "Proceed? [y/N] " _ans
 [[ "${_ans,,}" == "y" ]] || { info "Aborted."; exit 0; }
+
+# ── Repair any interrupted dpkg state ────────────────────────────────────────
+info "Checking package manager state..."
+dpkg --configure -a 2>/dev/null || true
+apt-get install -f -y 2>/dev/null || true
 
 # ── Fetch and run protect.sh with pre-filled ENV ──────────────────────────────
 TMPDIR=$(mktemp -d)
@@ -101,7 +100,7 @@ bash "$TMPDIR/scripts/protect.sh"
 
 # ── Disable and remove UFW ────────────────────────────────────────────────────
 if command -v ufw >/dev/null 2>&1; then
-    step "Removing UFW (replaced by nftables na_filter)"
+    info "Removing UFW (replaced by nftables na_filter)"
     ufw disable 2>/dev/null || true
     apt-get purge -y ufw >/dev/null 2>&1 || true
     info "UFW removed — firewall is now managed by nftables"

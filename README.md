@@ -13,7 +13,6 @@ An interactive menu for setting up and managing VPS nodes running Remnawave infr
 **VPS Hardening**
 - System update, essential package install, unattended upgrades
 - SSH hardening — custom port, password auth disabled
-- UFW firewall — allowlist-based rules for all relevant ports
 - Kernel tuning — sysctl hardening, IPv6 disable, TCP buffer optimization, BBR congestion control
 
 **Remnawave Stack**

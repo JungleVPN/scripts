@@ -20,6 +20,7 @@ die()  { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 step() { echo -e "\n${CYAN}▶${NC} ${BOLD}$*${NC}"; }
 
 JUNGLE_ENV="/etc/profile.d/jungle-node.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Header ────────────────────────────────────────────────────────────────────
 clear
@@ -36,30 +37,8 @@ echo -e "${NC}"
 [[ -f "$JUNGLE_ENV" ]] && source "$JUNGLE_ENV"
 
 # ── Collect all inputs upfront ────────────────────────────────────────────────
-echo -e "$SEP"
-echo -e "${BOLD}  Configuration — defaults shown in brackets${NC}"
-echo -e "$SEP"
-echo ""
-
-read -rp "  SSH port         [${JUNGLE_SSH_PORT:-1702}]:           " _v; SSH_PORT="${_v:-${JUNGLE_SSH_PORT:-1702}}"
-read -rp "  Panel IP         [${JUNGLE_PANEL_IP:-}]:  "              _v; PANEL_IP="${_v:-${JUNGLE_PANEL_IP:-}}"
-read -rp "  Beszel port      [${JUNGLE_BESZEL_PORT:-45876}]:          " _v; BESZEL_PORT="${_v:-${JUNGLE_BESZEL_PORT:-45876}}"
-read -rp "  Node port        [${JUNGLE_NODE_PORT:-2222}]:           "  _v; NODE_PORT="${_v:-${JUNGLE_NODE_PORT:-2222}}"
-read -rp "  XHTTP port       [${JUNGLE_XHTTP_PORT:-8443}]:           " _v; XHTTP_PORT="${_v:-${JUNGLE_XHTTP_PORT:-8443}}"
-read -rp "  gRPC port        [${JUNGLE_GRPC_PORT:-9443}]:           "  _v; GRPC_PORT="${_v:-${JUNGLE_GRPC_PORT:-9443}}"
-
-echo ""
-echo -e "$SEP"
-echo -e "${BOLD}  Summary${NC}"
-echo -e "$SEP"
-echo -e "  SSH_PORT    = ${CYAN}$SSH_PORT${NC}"
-echo -e "  PANEL_IP    = ${CYAN}$PANEL_IP${NC}"
-echo -e "  BESZEL_PORT = ${CYAN}$BESZEL_PORT${NC}"
-echo -e "  NODE_PORT   = ${CYAN}$NODE_PORT${NC}"
-echo -e "  XHTTP_PORT  = ${CYAN}$XHTTP_PORT${NC}"
-echo -e "  GRPC_PORT   = ${CYAN}$GRPC_PORT${NC}"
-echo -e "$SEP"
-echo ""
+source "$SCRIPT_DIR/lib/node_config.sh"
+collect_node_config
 warn "Firewall is configured separately via Node Accelerator → Protect."
 echo ""
 read -rp "Start node setup? [y/N] " _ans
