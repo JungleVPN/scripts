@@ -7,7 +7,7 @@
 # =============================================================================
 set -euo pipefail
 
-REPO="https://raw.githubusercontent.com/JungleVPN/scripts/main"
+REPO="https://cdn.jsdelivr.net/gh/JungleVPN/scripts@main"
 ENV_FILE="/etc/profile.d/jungle-node.sh"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'
@@ -24,7 +24,8 @@ pause() { echo ""; read -rp "  Press Enter to continue..." _; }
 # ── Install jungle command if not present ─────────────────────────────────────
 cat > /usr/local/bin/jungle <<'CMD'
 #!/usr/bin/env bash
-bash <(curl -Ls -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/JungleVPN/scripts/main/install.sh)
+curl -Ls "https://purge.jsdelivr.net/gh/JungleVPN/scripts@main/install.sh" -o /dev/null
+bash <(curl -Ls "https://cdn.jsdelivr.net/gh/JungleVPN/scripts@main/install.sh")
 CMD
 chmod +x /usr/local/bin/jungle
 
@@ -59,8 +60,9 @@ EOF
 # ── Helpers ───────────────────────────────────────────────────────────────────
 run_remote() {
     local script="$1"
+    curl -Ls "https://purge.jsdelivr.net/gh/JungleVPN/scripts@main/$script" -o /dev/null
     info "Fetching $script ..."
-    bash <(curl -Ls -H 'Cache-Control: no-cache' "$REPO/$script")
+    bash <(curl -Ls "$REPO/$script")
 }
 
 # ── Scripts submenus ──────────────────────────────────────────────────────────
