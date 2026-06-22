@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# node_setup.sh — VPS node hardening: apt, SSH
-# Firewall is handled by na_protect.sh (nftables).
+# node_setup.sh — VPS node hardening: apt, SSH, UFW firewall
 #
 # Usage (standalone):
 #   bash node_setup.sh
@@ -28,7 +27,7 @@ echo -e "${CYAN}${BOLD}"
 cat <<'BANNER'
   ╔════════════════════════════════════════════════════════╗
   ║             The Jungle — Node Setup                    ║
-  ║              apt update · SSH hardening                ║
+  ║         apt update · SSH hardening · UFW               ║
   ╚════════════════════════════════════════════════════════╝
 BANNER
 echo -e "${NC}"
@@ -39,8 +38,6 @@ echo -e "${NC}"
 # ── Collect all inputs upfront ────────────────────────────────────────────────
 source "$SCRIPT_DIR/lib/node_config.sh"
 collect_node_config
-warn "Firewall is configured separately via Node Accelerator → Protect."
-echo ""
 read -rp "Start node setup? [y/N] " _ans
 [[ "${_ans,,}" == "y" ]] || { info "Aborted."; exit 0; }
 
@@ -68,7 +65,7 @@ apt update -y
 apt upgrade -y
 
 step "Installing required packages"
-apt install -y curl unattended-upgrades
+apt install -y curl unattended-upgrades ufw
 
 step "Enabling unattended upgrades"
 dpkg-reconfigure -f noninteractive unattended-upgrades
@@ -86,8 +83,34 @@ sed -i "s/#PasswordAuthentication yes/PasswordAuthentication no/" "$SSHD_CONFIG"
 sed -i "s/PasswordAuthentication yes/PasswordAuthentication no/"  "$SSHD_CONFIG"
 systemctl restart ssh
 
+step "Configuring UFW firewall"
+ufw --force reset
+ufw default deny incoming
+ufw default allow outgoing
+
+# Core ports
+ufw allow "$SSH_PORT/tcp"    comment 'SSH'
+ufw allow 80/tcp             comment 'HTTP'
+ufw allow 443/tcp            comment 'HTTPS'
+ufw allow 443/udp            comment 'HTTPS/UDP'
+ufw allow "$XHTTP_PORT/tcp"  comment 'XHTTP'
+ufw allow "$GRPC_PORT/tcp"   comment 'gRPC'
+ufw allow "$BESZEL_PORT/tcp" comment 'Beszel'
+
+# Node port — restrict to panel IP if provided
+if [[ -n "$PANEL_IP" ]]; then
+    ufw allow from "$PANEL_IP" to any port "$NODE_PORT" proto tcp comment 'Node (panel only)'
+else
+    ufw allow "$NODE_PORT/tcp" comment 'Node'
+    warn "No PANEL_IP set — NODE_PORT $NODE_PORT is open to everyone"
+fi
+
+ufw --force enable
+ufw status verbose
+
 echo ""
 echo -e "$SEP"
-info "Node setup complete. SSH is now on port ${BOLD}$SSH_PORT${NC}."
-warn "Run Node Accelerator → Protect (option 7) to configure the firewall."
+info "Node setup complete."
+info "SSH is now on port ${BOLD}$SSH_PORT${NC}."
+info "Firewall is active (UFW)."
 echo -e "$SEP"

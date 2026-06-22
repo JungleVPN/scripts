@@ -232,6 +232,9 @@ BANNER
     echo -e "  ${CYAN}15)${NC} IP & Connectivity   — IP region, block checks, CensorCheck DPI"
     echo -e "  ${CYAN}16)${NC} RU Services check   — connectivity to gov, banks, social, e-commerce"
     echo ""
+    echo -e "  ${CYAN}Protocols${NC}"
+    echo -e "  ${CYAN}17)${NC} Hysteria2         — install Hysteria2 inbound on RemnaNode"
+    echo ""
     echo -e "   ${CYAN}0)${NC} Exit"
     echo -e "$SEP"
     echo ""
@@ -264,6 +267,7 @@ BANNER
         14) menu_cpu_hardware ;;
         15) menu_ip_connectivity ;;
         16) run_remote "ru_check.sh"; pause ;;
+        17) run_remote "hysteria.sh"; pause ;;
         0)  exit 0 ;;
         *)  warn "Invalid choice: $CHOICE"; pause ;;
     esac

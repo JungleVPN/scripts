@@ -98,10 +98,3 @@ export SSH_PORT TCP_PORTS UDP_PORTS UDP_PORTS NODE_PORT WHITELIST
 
 bash "$TMPDIR/scripts/protect.sh"
 
-# ── Disable and remove UFW ────────────────────────────────────────────────────
-if command -v ufw >/dev/null 2>&1; then
-    info "Removing UFW (replaced by nftables na_filter)"
-    ufw disable 2>/dev/null || true
-    apt-get purge -y ufw >/dev/null 2>&1 || true
-    info "UFW removed — firewall is now managed by nftables"
-fi
