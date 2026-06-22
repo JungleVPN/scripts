@@ -7,7 +7,7 @@
 # =============================================================================
 set -euo pipefail
 
-REPO="https://cdn.jsdelivr.net/gh/JungleVPN/scripts@main"
+REPO="https://raw.githubusercontent.com/JungleVPN/scripts/main"
 ENV_FILE="/etc/profile.d/jungle-node.sh"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'
@@ -24,8 +24,7 @@ pause() { echo ""; read -rp "  Press Enter to continue..." _; }
 # ── Install jungle command if not present ─────────────────────────────────────
 cat > /usr/local/bin/jungle <<'CMD'
 #!/usr/bin/env bash
-curl -Ls "https://purge.jsdelivr.net/gh/JungleVPN/scripts@main/install.sh" -o /dev/null
-bash <(curl -Ls "https://cdn.jsdelivr.net/gh/JungleVPN/scripts@main/install.sh")
+bash <(curl -Ls "https://raw.githubusercontent.com/JungleVPN/scripts/main/install.sh")
 CMD
 chmod +x /usr/local/bin/jungle
 
@@ -60,9 +59,14 @@ EOF
 # ── Helpers ───────────────────────────────────────────────────────────────────
 run_remote() {
     local script="$1"
-    curl -Ls "https://purge.jsdelivr.net/gh/JungleVPN/scripts@main/$script" -o /dev/null
     info "Fetching $script ..."
     bash <(curl -Ls "$REPO/$script")
+}
+
+ensure_hy2_vars() {
+    [[ -z "${HY2_DOMAIN:-}" ]] && read -rp "  HY2_DOMAIN (SNI for this node):  " HY2_DOMAIN
+    [[ -z "${HY2_PORT:-}" ]]   && { read -rp "  HY2_PORT   [36712]:              " HY2_PORT; HY2_PORT="${HY2_PORT:-36712}"; }
+    export HY2_DOMAIN HY2_PORT
 }
 
 # ── Scripts submenus ──────────────────────────────────────────────────────────
@@ -267,7 +271,7 @@ BANNER
         14) menu_cpu_hardware ;;
         15) menu_ip_connectivity ;;
         16) run_remote "ru_check.sh"; pause ;;
-        17) run_remote "hysteria.sh"; pause ;;
+        17) ensure_hy2_vars; run_remote "hysteria.sh"; pause ;;
         0)  exit 0 ;;
         *)  warn "Invalid choice: $CHOICE"; pause ;;
     esac
