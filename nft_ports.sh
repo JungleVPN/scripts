@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# nft_ports.sh — Manage ports in the na_filter nftables table
+# nft_ports.sh — Manage UFW firewall rules
 #
 # Usage (standalone):
 #   bash nft_ports.sh
@@ -17,34 +17,16 @@ warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 die()   { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 pause() { echo ""; read -rp "  Press Enter to continue..." _; }
 
-TABLE="inet na_filter"
-CHAIN="input"
-NFT_CONF="/etc/nftables.conf"
-
-require_root() {
-    [[ $EUID -eq 0 ]] || die "Run as root."
-}
-
-require_table() {
-    nft list table $TABLE &>/dev/null || die "Table '$TABLE' not found. Run na_protect.sh first."
-}
-
-save_ruleset() {
-    nft list ruleset > "$NFT_CONF"
-    info "Saved to $NFT_CONF"
-}
+[[ $EUID -eq 0 ]] || die "Run as root."
+command -v ufw &>/dev/null || die "UFW not installed. Run na_protect.sh first."
 
 # ── List ──────────────────────────────────────────────────────────────────────
 cmd_list() {
     echo ""
     echo -e "$SEP"
-    echo -e "${BOLD}  Open ports in $TABLE ($CHAIN)${NC}"
+    echo -e "${BOLD}  UFW rules (numbered)${NC}"
     echo -e "$SEP"
-    nft -a list chain $TABLE $CHAIN 2>/dev/null \
-        | grep -E 'dport|saddr' \
-        | sed 's/^/  /' \
-        | sed "s/accept/${GREEN}accept${NC}/g" \
-        | sed "s/drop/${RED}drop${NC}/g"
+    ufw status numbered
     echo -e "$SEP"
     echo ""
 }
@@ -58,8 +40,13 @@ cmd_add_port() {
     read -rp "  Port: " _port
     [[ "$_port" =~ ^[0-9]+$ ]] || die "Invalid port number."
 
-    nft add rule $TABLE $CHAIN $_proto dport $_port accept
-    save_ruleset
+    read -rp "  Comment (optional): " _comment
+
+    if [[ -n "${_comment:-}" ]]; then
+        ufw allow "$_port/$_proto" comment "$_comment"
+    else
+        ufw allow "$_port/$_proto"
+    fi
     info "Opened $_proto/$_port"
 }
 
@@ -75,46 +62,43 @@ cmd_add_port_ip() {
     read -rp "  Allowed source IP: " _ip
     [[ "$_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(\/[0-9]+)?$ ]] || die "Invalid IP address."
 
-    nft add rule $TABLE $CHAIN ip saddr $_ip $_proto dport $_port accept
-    save_ruleset
+    read -rp "  Comment (optional): " _comment
+
+    if [[ -n "${_comment:-}" ]]; then
+        ufw allow from "$_ip" to any port "$_port" proto "$_proto" comment "$_comment"
+    else
+        ufw allow from "$_ip" to any port "$_port" proto "$_proto"
+    fi
     info "Opened $_proto/$_port for $_ip only"
 }
 
-# ── Remove port ───────────────────────────────────────────────────────────────
+# ── Remove rule ───────────────────────────────────────────────────────────────
 cmd_remove() {
     echo ""
-    echo -e "${BOLD}  Current rules with handles:${NC}"
+    ufw status numbered
     echo ""
-    nft -a list chain $TABLE $CHAIN 2>/dev/null | grep -E 'dport|saddr' | sed 's/^/  /'
-    echo ""
-
-    read -rp "  Handle number to delete: " _handle
-    [[ "$_handle" =~ ^[0-9]+$ ]] || die "Invalid handle."
-
-    nft delete rule $TABLE $CHAIN handle $_handle
-    save_ruleset
-    info "Rule handle $_handle deleted"
+    read -rp "  Rule number to delete: " _num
+    [[ "$_num" =~ ^[0-9]+$ ]] || die "Invalid rule number."
+    ufw --force delete "$_num"
+    info "Rule $_num deleted"
 }
 
 # ── Menu ──────────────────────────────────────────────────────────────────────
-require_root
-require_table
-
 while true; do
     clear
     echo -e "${CYAN}${BOLD}"
     cat <<'BANNER'
   ╔════════════════════════════════════════════════════════╗
   ║           The Jungle — Firewall Port Manager           ║
-  ║                    nftables · na_filter                ║
+  ║                         UFW                            ║
   ╚════════════════════════════════════════════════════════╝
 BANNER
     echo -e "${NC}"
     echo -e "$SEP"
-    echo -e "   ${CYAN}1)${NC} List open ports"
+    echo -e "   ${CYAN}1)${NC} List rules"
     echo -e "   ${CYAN}2)${NC} Open port             — allow a port for everyone"
     echo -e "   ${CYAN}3)${NC} Open port for one IP  — restrict port to a specific source IP"
-    echo -e "   ${CYAN}4)${NC} Remove rule           — delete by handle number"
+    echo -e "   ${CYAN}4)${NC} Remove rule           — delete by rule number"
     echo -e "$SEP"
     echo -e "   ${CYAN}0)${NC} Exit"
     echo -e "$SEP"
