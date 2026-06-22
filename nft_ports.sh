@@ -33,12 +33,12 @@ cmd_list() {
 
 # ── Add plain port ────────────────────────────────────────────────────────────
 cmd_add_port() {
+    read -rp "  Port: " _port
+    [[ "$_port" =~ ^[0-9]+$ ]] || die "Invalid port number."
+
     read -rp "  Protocol [tcp/udp, default tcp]: " _proto
     _proto="${_proto:-tcp}"
     [[ "$_proto" == "tcp" || "$_proto" == "udp" ]] || die "Protocol must be tcp or udp."
-
-    read -rp "  Port: " _port
-    [[ "$_port" =~ ^[0-9]+$ ]] || die "Invalid port number."
 
     read -rp "  Comment (optional): " _comment
 
@@ -52,12 +52,12 @@ cmd_add_port() {
 
 # ── Add port restricted to a source IP ───────────────────────────────────────
 cmd_add_port_ip() {
+    read -rp "  Port: " _port
+    [[ "$_port" =~ ^[0-9]+$ ]] || die "Invalid port number."
+
     read -rp "  Protocol [tcp/udp, default tcp]: " _proto
     _proto="${_proto:-tcp}"
     [[ "$_proto" == "tcp" || "$_proto" == "udp" ]] || die "Protocol must be tcp or udp."
-
-    read -rp "  Port: " _port
-    [[ "$_port" =~ ^[0-9]+$ ]] || die "Invalid port number."
 
     read -rp "  Allowed source IP: " _ip
     [[ "$_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(\/[0-9]+)?$ ]] || die "Invalid IP address."
