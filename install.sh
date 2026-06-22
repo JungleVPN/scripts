@@ -60,7 +60,7 @@ EOF
 run_remote() {
     local script="$1"
     info "Fetching $script ..."
-    bash <(curl -Ls "$REPO/$script")
+    bash <(curl -Ls "$REPO/$script") || warn "$script exited with errors."
 }
 
 ensure_hy2_vars() {

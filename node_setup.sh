@@ -19,7 +19,17 @@ die()  { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 step() { echo -e "\n${CYAN}▶${NC} ${BOLD}$*${NC}"; }
 
 JUNGLE_ENV="/etc/profile.d/jungle-node.sh"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="https://raw.githubusercontent.com/JungleVPN/scripts/main"
+
+# Resolve lib: local file when running from disk, curl when piped
+if [[ -f "${BASH_SOURCE[0]:-}" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    _NODE_CONFIG="${SCRIPT_DIR}/lib/node_config.sh"
+else
+    _NODE_CONFIG="$(mktemp)"
+    curl -Ls "$REPO/lib/node_config.sh" -o "$_NODE_CONFIG"
+    trap "rm -f $_NODE_CONFIG" EXIT
+fi
 
 # ── Header ────────────────────────────────────────────────────────────────────
 clear
@@ -36,7 +46,7 @@ echo -e "${NC}"
 [[ -f "$JUNGLE_ENV" ]] && source "$JUNGLE_ENV"
 
 # ── Collect all inputs upfront ────────────────────────────────────────────────
-source "$SCRIPT_DIR/lib/node_config.sh"
+source "$_NODE_CONFIG"
 collect_node_config
 read -rp "Start node setup? [y/N] " _ans
 [[ "${_ans,,}" == "y" ]] || { info "Aborted."; exit 0; }
