@@ -239,6 +239,9 @@ BANNER
     echo -e "  ${CYAN}Protocols${NC}"
     echo -e "  ${CYAN}17)${NC} Hysteria2         — install Hysteria2 inbound on RemnaNode"
     echo ""
+    echo -e "  ${CYAN}System${NC}"
+    echo -e "  ${CYAN}18)${NC} Update jungle     — reinstall jungle command and reload"
+    echo ""
     echo -e "   ${CYAN}0)${NC} Exit"
     echo -e "$SEP"
     echo ""
@@ -272,6 +275,15 @@ BANNER
         15) menu_ip_connectivity ;;
         16) run_remote "ru_check.sh"; pause ;;
         17) ensure_hy2_vars; run_remote "hysteria.sh"; pause ;;
+        18)
+            cat > /usr/local/bin/jungle <<'CMD'
+#!/usr/bin/env bash
+bash <(curl -Ls "https://raw.githubusercontent.com/JungleVPN/scripts/main/install.sh")
+CMD
+            chmod +x /usr/local/bin/jungle
+            info "jungle command updated"
+            exec jungle
+            ;;
         0)  exit 0 ;;
         *)  warn "Invalid choice: $CHOICE"; pause ;;
     esac
