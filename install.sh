@@ -5,9 +5,12 @@
 # Usage:
 #   bash <(curl -Ls https://raw.githubusercontent.com/JungleVPN/scripts/main/install.sh)
 # =============================================================================
+# VERSION=1.0.0
 set -euo pipefail
 
+SCRIPT_VERSION="1.0.0"
 REPO="https://raw.githubusercontent.com/JungleVPN/scripts/main"
+SCRIPT_URL="${REPO}/install.sh"
 ENV_FILE="/etc/profile.d/jungle-node.sh"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'
@@ -276,12 +279,21 @@ BANNER
         16) run_remote "ru_check.sh"; pause ;;
         17) ensure_hy2_vars; run_remote "hysteria.sh"; pause ;;
         18)
-            cat > /usr/local/bin/jungle <<'CMD'
-#!/usr/bin/env bash
-bash <(curl -Ls "https://raw.githubusercontent.com/JungleVPN/scripts/main/install.sh")
-CMD
-            chmod +x /usr/local/bin/jungle
-            info "jungle command updated"
+            step "Checking for updates..."
+            REMOTE_VERSION=$(curl -s "$SCRIPT_URL" 2>/dev/null | grep -m1 '^# VERSION=' | cut -d'=' -f2)
+            if [[ -z "$REMOTE_VERSION" ]]; then
+                warn "Could not reach GitHub to check for updates"
+                pause; continue
+            fi
+            info "Current version : ${SCRIPT_VERSION}"
+            info "Remote version  : ${REMOTE_VERSION}"
+            if [[ "$REMOTE_VERSION" == "$SCRIPT_VERSION" ]]; then
+                info "Already up to date"
+                pause; continue
+            fi
+            info "Updating jungle command to ${REMOTE_VERSION}..."
+            curl -sSL "$SCRIPT_URL" | install -m 755 /dev/stdin /usr/local/bin/jungle
+            info "Updated — reloading"
             exec jungle
             ;;
         0)  exit 0 ;;
