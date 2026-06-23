@@ -188,6 +188,7 @@ else
         --non-interactive --agree-tos \
         $CERTBOT_EMAIL_ARG \
         -d "$HY2_DOMAIN" \
+        < /dev/null \
         || { [[ "$CADDY_WAS_RUNNING" == "1" ]] && docker start "$CADDY_CONTAINER"; die "certbot failed"; }
 
     [[ "$CADDY_WAS_RUNNING" == "1" ]] && { docker start "$CADDY_CONTAINER"; info "Restarted ${CADDY_CONTAINER}"; }
