@@ -210,10 +210,14 @@ else
     info "Mounted ${CERTBOT_DIR}/certs → /etc/letsencrypt (ro) into container"
 fi
 
-# Print cron renewal instructions
-echo
-info "Auto-renewal cron (add via 'crontab -e' on this host):"
-echo "  0 0 28 * * docker stop ${CADDY_CONTAINER}; cd ${CERTBOT_DIR} && docker compose run --rm certbot renew; docker start ${CADDY_CONTAINER}"
+# Install renewal cron job (idempotent)
+CRON_JOB="0 2 28 * * docker stop ${CADDY_CONTAINER}; cd ${CERTBOT_DIR} && docker compose run --rm certbot renew < /dev/null; docker start ${CADDY_CONTAINER}"
+if crontab -l 2>/dev/null | grep -qF "certbot renew"; then
+    info "Renewal cron already present — leaving as-is"
+else
+    (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+    info "Renewal cron installed (runs 02:00 on the 28th of each month)"
+fi
 
 # ── 4. Firewall ──────────────────────────────────────────────────────────────
 section "4. Firewall (ufw)"
