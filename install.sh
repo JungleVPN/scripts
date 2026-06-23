@@ -280,7 +280,7 @@ BANNER
         17) ensure_hy2_vars; run_remote "hysteria.sh"; pause ;;
         18)
             step "Checking for updates..."
-            REMOTE_VERSION=$(curl -s "$SCRIPT_URL" 2>/dev/null | grep -m1 '^# VERSION=' | cut -d'=' -f2)
+            REMOTE_VERSION=$(curl -s "$SCRIPT_URL" 2>/dev/null | grep -m1 '^# VERSION=' | cut -d'=' -f2 || true)
             if [[ -z "$REMOTE_VERSION" ]]; then
                 warn "Could not reach GitHub to check for updates"
                 pause; continue
