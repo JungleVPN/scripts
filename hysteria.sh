@@ -22,16 +22,19 @@ set -euo pipefail
 
 # ── Defaults (override via env) ──────────────────────────────────────────────
 : "${HY2_DOMAIN:?  Set HY2_DOMAIN (e.g. lv.thejungle.pro — the published SNI for this node)}"
-: "${HY2_PORT:=36712}"
+: "${HY2_PORT:=443}"
 : "${XRAY_VERSION:=v26.6.1}"
 : "${REMNANODE_DIR:=/opt/remnanode}"
 : "${CUSTOM_XRAY_DIR:=/opt/remnanode/custom-xray}"
-: "${CERT_EMAIL:=}"            # optional; if empty, certbot registers without email
+: "${CERT_EMAIL:=}"            # required for certbot; set to your email (e.g. admin@example.com)
 : "${SKIP_CERT:=0}"           # set 1 if a valid cert for HY2_DOMAIN already exists & is mounted
 : "${ROLLBACK:=0}"            # set 1 to remove the core override and exit
+: "${CERTBOT_DIR:=/opt/certbot}"        # where certbot docker-compose.yml and certs live
+: "${CADDY_CONTAINER:=caddy-selfsteal}" # Docker container name holding port 80; stopped briefly during cert issuance. Override: CADDY_CONTAINER=other bash hysteria.sh
 
 COMPOSE_FILE="${REMNANODE_DIR}/docker-compose.yml"
-CERT_LIVE="/etc/letsencrypt/live/${HY2_DOMAIN}"
+CERTBOT_COMPOSE="${CERTBOT_DIR}/docker-compose.yml"
+CERT_LIVE="${CERTBOT_DIR}/certs/live/${HY2_DOMAIN}"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 info()    { echo -e "${GREEN}[INFO]${NC}  $*"; }
@@ -133,34 +136,79 @@ else
 fi
 
 # ── 3. TLS certificate for HY2_DOMAIN ────────────────────────────────────────
-section "3. TLS certificate (Hysteria2 terminates its own TLS — not REALITY, not Caddy)"
+section "3. TLS certificate (standalone HTTP-01 via Docker certbot)"
+
+# Ensure certbot dir and compose file exist
+mkdir -p "$CERTBOT_DIR"
+if [[ ! -f "$CERTBOT_COMPOSE" ]]; then
+    cat > "$CERTBOT_COMPOSE" <<'CERTBOT_COMPOSE_EOF'
+services:
+  certbot:
+    container_name: certbot
+    image: certbot/certbot
+    network_mode: host
+    volumes:
+      - ./certs:/etc/letsencrypt
+CERTBOT_COMPOSE_EOF
+    info "Created ${CERTBOT_COMPOSE}"
+else
+    info "certbot compose already exists: ${CERTBOT_COMPOSE}"
+fi
 
 if [[ "$SKIP_CERT" == "1" ]]; then
     info "SKIP_CERT=1 — assuming a valid cert for $HY2_DOMAIN is already present & mounted"
 elif [[ -f "${CERT_LIVE}/fullchain.pem" ]]; then
     info "Certificate already exists: ${CERT_LIVE}/fullchain.pem — skipping issuance"
 else
-    warn "No cert for $HY2_DOMAIN found."
-    warn "Ports 80/443 are held by REALITY/Caddy, so HTTP-01/standalone will fail."
-    warn "Use DNS-01 (manual) — you will be prompted to create a TXT record:"
-    echo
-    if [[ -n "$CERT_EMAIL" ]]; then
-        certbot certonly --manual --preferred-challenges dns -d "$HY2_DOMAIN" \
-            --agree-tos -m "$CERT_EMAIL" || die "certbot failed"
-    else
-        certbot certonly --manual --preferred-challenges dns -d "$HY2_DOMAIN" \
-            --agree-tos --register-unsafely-without-email || die "certbot failed"
+    [[ -n "$CERT_EMAIL" ]] || die "CERT_EMAIL is required for certbot (e.g. CERT_EMAIL=admin@example.com)"
+
+    CERTBOT_EMAIL_ARG="--email ${CERT_EMAIL}"
+
+    # If port 80 is held by the caddy container, stop it briefly for the HTTP-01 challenge
+    PORT80_PID=$(ss -tlnp 'sport = :80' 2>/dev/null | grep -oP '(?<=pid=)\d+' | head -1 || true)
+    CADDY_WAS_RUNNING=0
+    if [[ -n "$PORT80_PID" ]]; then
+        PORT80_PROC=$(ps -p "$PORT80_PID" -o comm= 2>/dev/null || true)
+        info "Port 80 held by: ${PORT80_PROC} (pid ${PORT80_PID})"
+        if docker inspect --format '{{.State.Running}}' "$CADDY_CONTAINER" 2>/dev/null | grep -q true; then
+            info "Stopping ${CADDY_CONTAINER} to free port 80 (~10 s downtime)..."
+            docker stop "$CADDY_CONTAINER"
+            CADDY_WAS_RUNNING=1
+        else
+            die "Port 80 is in use by '${PORT80_PROC}' (not ${CADDY_CONTAINER}). Free it manually, then re-run."
+        fi
     fi
-    info "Certificate issued"
+
+    info "Issuing cert for $HY2_DOMAIN via standalone HTTP-01..."
+    docker run --rm \
+        -v "${CERTBOT_DIR}/certs:/etc/letsencrypt" \
+        -v "${CERTBOT_DIR}/var-lib:/var/lib/letsencrypt" \
+        --network host \
+        certbot/certbot certonly --standalone \
+        --non-interactive --agree-tos \
+        $CERTBOT_EMAIL_ARG \
+        -d "$HY2_DOMAIN" \
+        || { [[ "$CADDY_WAS_RUNNING" == "1" ]] && docker start "$CADDY_CONTAINER"; die "certbot failed"; }
+
+    [[ "$CADDY_WAS_RUNNING" == "1" ]] && { docker start "$CADDY_CONTAINER"; info "Restarted ${CADDY_CONTAINER}"; }
+    info "Certificate issued → ${CERT_LIVE}"
 fi
 
-# Ensure /etc/letsencrypt is mounted into the container
-if grep -q "/etc/letsencrypt:/etc/letsencrypt" "$COMPOSE_FILE"; then
-    info "letsencrypt already mounted into container"
+# Mount certbot certs dir into remnanode (maps to /etc/letsencrypt inside container)
+CERT_MOUNT="${CERTBOT_DIR}/certs:/etc/letsencrypt"
+if grep -qF "$CERT_MOUNT" "$COMPOSE_FILE"; then
+    info "certbot certs already mounted into container"
 else
-    sed -i "0,/^\(\s*\)volumes:/s##&\n\1  - '/etc/letsencrypt:/etc/letsencrypt:ro'#" "$COMPOSE_FILE"
-    info "Mounted /etc/letsencrypt (ro) into container"
+    # Remove any old /etc/letsencrypt mount that may exist from a previous approach
+    sed -i "\#/etc/letsencrypt:/etc/letsencrypt#d" "$COMPOSE_FILE"
+    sed -i "0,/^\(\s*\)volumes:/s##&\n\1  - '${CERT_MOUNT}:ro'#" "$COMPOSE_FILE"
+    info "Mounted ${CERTBOT_DIR}/certs → /etc/letsencrypt (ro) into container"
 fi
+
+# Print cron renewal instructions
+echo
+info "Auto-renewal cron (add via 'crontab -e' on this host):"
+echo "  0 0 28 * * docker stop ${CADDY_CONTAINER}; cd ${CERTBOT_DIR} && docker compose run --rm certbot renew; docker start ${CADDY_CONTAINER}"
 
 # ── 4. Firewall ──────────────────────────────────────────────────────────────
 section "4. Firewall (ufw)"

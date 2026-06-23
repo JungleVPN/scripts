@@ -65,7 +65,7 @@ run_remote() {
 
 ensure_hy2_vars() {
     [[ -z "${HY2_DOMAIN:-}" ]] && read -rp "  HY2_DOMAIN (SNI for this node):  " HY2_DOMAIN
-    [[ -z "${HY2_PORT:-}" ]]   && { read -rp "  HY2_PORT   [36712]:              " HY2_PORT; HY2_PORT="${HY2_PORT:-36712}"; }
+    [[ -z "${HY2_PORT:-}" ]]   && { read -rp "  HY2_PORT   [443]:              " HY2_PORT; HY2_PORT="${HY2_PORT:-443}"; }
     export HY2_DOMAIN HY2_PORT
 }
 
