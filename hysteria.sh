@@ -72,12 +72,16 @@ CORE_NOW=$(docker exec remnanode xray version 2>/dev/null | head -1 || echo "unk
 info "Current in-container core: $CORE_NOW"
 
 info "Verifying DNS for $HY2_DOMAIN"
-RESOLVED=$(dig +short "$HY2_DOMAIN" | tail -1 || true)
-SERVER_IP=$(curl -s4 ifconfig.me || true)
+RESOLVED=$(dig +short "$HY2_DOMAIN" +time=3 +tries=1 2>/dev/null | tail -1 || true)
+SERVER_IP=$(curl -s4 --max-time 5 ifconfig.me 2>/dev/null || true)
 [[ -n "$RESOLVED" ]] || die "DNS: $HY2_DOMAIN does not resolve. Create an A record first."
-[[ "$RESOLVED" == "$SERVER_IP" ]] \
-    && info "DNS OK: $HY2_DOMAIN → $RESOLVED (matches server)" \
-    || warn "DNS: $HY2_DOMAIN → $RESOLVED but server IP is $SERVER_IP — confirm this is intentional."
+if [[ -z "$SERVER_IP" ]]; then
+    warn "Could not detect server IP — skipping DNS match check"
+elif [[ "$RESOLVED" == "$SERVER_IP" ]]; then
+    info "DNS OK: $HY2_DOMAIN → $RESOLVED (matches server)"
+else
+    warn "DNS: $HY2_DOMAIN → $RESOLVED but server IP is $SERVER_IP — confirm this is intentional."
+fi
 
 # ── 1. Dependencies ──────────────────────────────────────────────────────────
 section "1. Dependencies"
