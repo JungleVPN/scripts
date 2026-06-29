@@ -231,6 +231,7 @@ net.ipv4.tcp_fack                  = 1
 net.ipv4.tcp_ecn                   = 1
 net.ipv4.tcp_window_scaling        = 1
 net.ipv4.tcp_notsent_lowat         = 131072
+net.ipv4.tcp_min_snd_mss           = 512
 net.ipv4.ip_local_port_range       = 10000 65535
 
 ### ─── Keepalive (1200s keeps mobile/NAT VPN clients alive) ────────────────
