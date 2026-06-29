@@ -218,7 +218,7 @@ net.ipv4.tcp_syn_retries           = 2
 net.ipv4.tcp_synack_retries        = 2
 net.ipv4.tcp_timestamps            = 1
 net.ipv4.tcp_rfc1337               = 1
-net.ipv4.tcp_fin_timeout           = 15
+net.ipv4.tcp_fin_timeout           = 20
 net.ipv4.tcp_fastopen              = 3
 net.ipv4.tcp_tw_reuse              = 1
 net.ipv4.tcp_max_syn_backlog       = 65535
@@ -275,7 +275,7 @@ fs.inotify.max_user_watches   = 524288
 fs.inotify.max_user_instances = 8192
 
 ### ─── Memory ───────────────────────────────────────────────────────────────
-vm.swappiness             = 0
+vm.swappiness             = 10
 vm.dirty_ratio            = 10
 vm.dirty_background_ratio = 5
 vm.overcommit_memory      = 1
